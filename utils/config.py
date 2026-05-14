@@ -73,6 +73,7 @@ class Config:
         with tempfile.TemporaryDirectory() as temp_config_dir:
             temp_config_file = tempfile.NamedTemporaryFile(
                 dir=temp_config_dir, suffix=fileExtname)
+            temp_config_file.close()
             temp_config_name = osp.basename(temp_config_file.name)
 
             # Substitute predefined variables
@@ -95,8 +96,6 @@ class Config:
                 }
                 # delete imported module
                 del sys.modules[temp_module_name]
-            # close temp file
-            temp_config_file.close()
         return cfg_dict
 
     @staticmethod

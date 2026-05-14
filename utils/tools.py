@@ -88,12 +88,12 @@ def get_result_name(config, path='./results'):
 
     if is_real_noise:
         result_dir = osp.join(path, dataset_name)
-        log_name = config['dataset'] + '_seed:' + str(config['seed']) + '.json'
+        log_name = config['dataset'] + '_seed_' + str(config['seed']) + '.json'
     else:
         noise_type = config['noise_type']
         noise_ratio = str(config['percent'])
         result_dir = osp.join(path, dataset_name, noise_type, noise_ratio)
-        log_name = config['dataset'] + '_' + config['noise_type'] + '_' + str(config['percent']) + '_seed:' + str(config['seed']) + '.json'
+        log_name = config['dataset'] + '_' + config['noise_type'] + '_' + str(config['percent']) + '_seed_' + str(config['seed']) + '.json'
 
     if not osp.exists(result_dir):
         os.makedirs(result_dir)
@@ -109,12 +109,12 @@ def get_log_name(config, path='./results'):
 
     if is_real_noise:
         result_dir = osp.join(path, dataset_name)
-        log_name = config['dataset'] + '_seed:' + str(config['seed'])
+        log_name = config['dataset'] + '_seed_' + str(config['seed'])
     else:
         noise_type = config['noise_type']
         noise_ratio = str(config['percent'])
         result_dir = osp.join(path, dataset_name, noise_type, noise_ratio)
-        log_name = config['dataset'] + '_' + config['noise_type'] + '_' + str(config['percent']) + '_seed:' + str(config['seed'])
+        log_name = config['dataset'] + '_' + config['noise_type'] + '_' + str(config['percent']) + '_seed_' + str(config['seed'])
 
     if not osp.exists(result_dir):
         os.makedirs(result_dir)
