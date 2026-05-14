@@ -8,7 +8,6 @@ import numpy as np
 import time
 import torch
 import logging
-import sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config',
@@ -35,27 +34,6 @@ parser.add_argument("--save_log", type=lambda x: bool(strtobool(str(x))), defaul
 args = parser.parse_args()
 
 
-class StreamToLogger:
-    def __init__(self, logger, level):
-        self.logger = logger
-        self.level = level
-        self.buffer = ''
-
-    def write(self, message):
-        self.buffer += message
-        while '\n' in self.buffer:
-            line, self.buffer = self.buffer.split('\n', 1)
-            if line:
-                self.logger.log(self.level, line)
-
-    def flush(self):
-        if self.buffer:
-            self.logger.log(self.level, self.buffer)
-            self.buffer = ''
-        for handler in self.logger.handlers:
-            handler.flush()
-
-
 def setup_file_logger(config):
     log_path = get_result_name(config, path='./logs').replace('.json', '.log')
     logger = logging.getLogger('jumpteaching')
@@ -69,15 +47,10 @@ def setup_file_logger(config):
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s',
                                   datefmt='%Y-%m-%d %H:%M:%S')
 
-    file_handler = logging.FileHandler(log_path, mode='a')
+    file_handler = logging.FileHandler(log_path, mode='w')
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
-
-    console_handler = logging.StreamHandler(sys.__stdout__)
-    console_handler.setLevel(logging.INFO)
-    console_handler.setFormatter(formatter)
-    logger.addHandler(console_handler)
 
     return logger, log_path
 
@@ -86,7 +59,6 @@ def setup_file_logger(config):
 def main():
     prestart = bool(args.prestart)
     save = bool(args.save)
-    original_stdout, original_stderr = sys.stdout, sys.stderr
 
     config = load_config(args.config, _print=False)
     
@@ -119,11 +91,9 @@ def main():
     config['save_path'] = './results'
     
     logger, log_path = setup_file_logger(config)
-    sys.stdout = StreamToLogger(logger, logging.INFO)
-    sys.stderr = StreamToLogger(logger, logging.ERROR)
 
     try:
-        print(f'Training log will be saved to: {log_path}')
+        print(f'Epoch summaries will be saved to: {log_path}')
         print_config(config)
         set_seed(config['seed'])
         
@@ -247,19 +217,23 @@ def main():
             
             if 'webvision' in config['dataset']: # webvision needs to validate on webvision's val set and ImageNet's test set
                 val_acc = model.evaluate(evalloader)
-                print(
+                val_message = (
                     'Epoch [%d/%d] Val Accuracy on the %s val images: top1: %.4f top5: %.4f %%'
                     % (epoch + 1, config['epochs'], num_test_images, val_acc[0],
                        val_acc[1]))
+                print(val_message)
+                logger.info(val_message)
 
                 test_acc = model.evaluate(testloader)
                 if best_acc < test_acc[0]:
                     best_acc, best_epoch = test_acc[0], epoch + 1
 
-                print(
+                test_message = (
                     'Epoch [%d/%d] Test Accuracy on the %s test images: top1: %.4f, top5: %.4f. %%'
                     % (epoch + 1, config['epochs'], num_test_images, test_acc[0],
                        test_acc[1]))
+                print(test_message)
+                logger.info(test_message)
 
                 if epoch >= config['epochs'] - 5:
                     val_acc_list.append(val_acc)
@@ -278,9 +252,11 @@ def main():
                 if(isinstance(test_acc,tuple)):
                     if best_acc < test_acc[1]:
                         best_acc, best_epoch = test_acc[1], epoch + 1
-                    print(
+                    test_message = (
                         'Epoch [%d/%d] Test Accuracy on the %s test images: %.4f,%4f %%' %
                         (epoch + 1, config['epochs'], num_test_images, test_acc[0],test_acc[1]))
+                    print(test_message)
+                    logger.info(test_message)
                     if(hasattr(model,"writer")):
                         model.writer.add_scalar("accuracy",test_acc[1],epoch)
                     if epoch > config['epochs'] - count_num:
@@ -290,9 +266,11 @@ def main():
                     if best_acc < test_acc:
                         best_acc, best_epoch = test_acc, epoch + 1
 
-                    print(
+                    test_message = (
                         'Epoch [%d/%d] Test Accuracy on the %s test images: %.4f %%' %
                         (epoch + 1, config['epochs'], num_test_images, test_acc))
+                    print(test_message)
+                    logger.info(test_message)
                     if(hasattr(model,"writer")):
                         model.writer.add_scalar("accuracy",test_acc,epoch)
                     if epoch > config['epochs'] - count_num:
@@ -343,9 +321,6 @@ def main():
                              best_epoch=best_epoch,
                              jsonfile=jsonfile)
     finally:
-        sys.stdout.flush()
-        sys.stderr.flush()
-        sys.stdout, sys.stderr = original_stdout, original_stderr
         for handler in logger.handlers[:]:
             handler.close()
             logger.removeHandler(handler)
